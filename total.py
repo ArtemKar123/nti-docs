@@ -1,7 +1,6 @@
+from matcher import HeaderMatcher
 import cv2
 import numpy as np
-from PIL import Image
-import math
 import time
 from segmentation import HeaderToText
 
@@ -54,14 +53,14 @@ def find_contour(im, sec, accuracy=10):
 
 def process_image(name):
     img = cv2.imread(name)
-    mean = img.mean()
+    # mean = img.mean()
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # if med < 250:
-    #print(mean, img.mean())
+    # print(mean, img.mean())
     secondary = img.copy()
     ret, img = cv2.threshold(img, img.mean() - 135, 255, cv2.THRESH_BINARY)
     orig = img.copy()
-    output = img.copy()
+    # output = img.copy()
     img = 255 - img
 
     kernel = np.ones((10, 10), np.uint8)
@@ -74,7 +73,7 @@ def process_image(name):
     for cnt in contours:
         rect = cv2.minAreaRect(cnt)
         box = cv2.boxPoints(rect)
-        box = np.int0(box)
+        # box = np.int0(box)
         angle = rect[2]
         # if angle > -89 and angle < 89:
         if angle < -45:
@@ -107,23 +106,37 @@ def match_header(img):
         img = cv2.resize(img, (ref.shape[1], ref.shape[0]), interpolation=cv2.INTER_AREA)
     diff_img = cv2.absdiff(img, ref)
     tile_diff = int(np.sum(diff_img) / 255)
-    #print('header diff:', tile_diff)
+    # print('header diff:', tile_diff)
     return tile_diff
 
 
-# names = ['cat.jpg', 'im54.png', 'yellow.jpg', '1Doc.jpg', 'mirror.png', 'im12.png', 'im13.png',
-#         'im1.png', 'test.png', 'real-0.jpg', 'real-1.jpg']
-names = ['yellow.jpg']
+names = ['cat.jpg', 'im54.png', 'yellow.jpg', '1Doc.jpg', 'mirror.png', 'im12.png', 'im13.png',
+         'im1.png', 'test.png', 'real-0.jpg', 'real-1.jpg', 'wrong.png', 'wrong1.png', 'wrong3.png']
+# names = ['yellow.jpg']
 MAX_HEADER_DIFF = 10000
 count = 0
 ht = HeaderToText()
+times = []
+hm = HeaderMatcher()
+doc_names = ['до 18', 'до 14']
 for n in names:
+    start = time.time()
     processed, second = process_image(n)
-    cv2.imwrite(f'{count}.png', processed)
-    header = second[:50, :]
-    croped_header, s = find_contour(header, header, accuracy=1)
+    # cv2.imwrite(f'{count}.png', second)
+    header = second[:75, :]
+    # croped_header = header
+    # croped_header, s = find_contour(header, header, accuracy=1)
     # res = match_header(croped_header)
-    cv2.imwrite(f'header{count}.png', croped_header)
-    print(ht.convert(f'header{count}.png'))
+    try:
+        pass
+        # print(count)
+        # cv2.imwrite(f'Headers/header{count}.png', header)
+    except Exception as e:
+        pass
+    # print(ht.convert(f'Headers/header{count}.png'))
     count += 1
-    # print(res < MAX_HEADER_DIFF)
+    _id = hm.classify(header)
+    times.append(time.time() - start)
+    if _id >= 0:
+        print(doc_names[_id])
+print(np.mean(times))

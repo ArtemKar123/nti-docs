@@ -11,15 +11,17 @@ class HeaderToText:
                            'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Ъ', 'Ы', 'Ь', 'Э', 'Ю',
                            'Я', '1', '2', '3', '4', '5', '6', '7', '8', '9']
         self.refLetters = []
-        self.files = [f for f in listdir('Dictionary/') if isfile(join('Dictionary/', f))]
+        self.files = [f for f in listdir('letter_new/') if isfile(join('letter_new/', f))]
         for filename in self.files:
-            im = cv2.cvtColor(cv2.imread(f'Dictionary/{filename}'), cv2.COLOR_BGR2GRAY)
+            im = cv2.cvtColor(cv2.imread(f'letter_new/{filename}'), cv2.COLOR_BGR2GRAY)
             self.refLetters.append([im, filename.replace('.png', '')])
 
     def extract_letters(self, img, out_size=28):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         ret, thresh = cv2.threshold(gray, 155, 255, cv2.THRESH_BINARY)
         img_erode = cv2.erode(thresh, np.ones((1, 1), np.uint8), iterations=1)
+        # img_erode = thresh
+        cv2.imshow('errode', img_erode)
         # Get contours
         contours, hierarchy = cv2.findContours(img_erode, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
         output = img.copy()
@@ -67,9 +69,10 @@ class HeaderToText:
         count = 0
         word = ''
         for l in letters:
-            #cv2.imshow("letter", l[0])
-            #cv2.waitKey(0)
-            # cv2.imwrite(f"letters/letter{count}.png", l[2])
+            cv2.namedWindow('letter', cv2.WINDOW_NORMAL)
+            cv2.imshow("letter", l[2])
+            cv2.waitKey(0)
+            cv2.imwrite(f"letters/letter{count}.png", l[2])
             minimal = sys.maxsize
             best = ''
             for ref in self.refLetters:
@@ -79,13 +82,18 @@ class HeaderToText:
                 # cv2.imshow("bws", bws)
                 # cv2.imshow("bor", bor)
                 # cv2.waitKey(0)
+
                 score = abs(bor.mean() - bws.mean())
                 #   print(score)
                 # mean = bws.mean()
                 if score < minimal:
                     minimal = score
                     best = ref[1]
-            best = self.dictionary[int(best)]
+            print(minimal)
+            if minimal < 60:
+                best = self.dictionary[int(best)]
+            else:
+                best = ''
             # print(best)
             # break
             if best == 'Ы' and word[-1] == 'Ь':
