@@ -11,6 +11,7 @@ def find_contour(im, sec, accuracy=10):
     bot_found = False
     left_found = False
     right_found = False
+    MAX = 245
     rows, cols = a.shape[0], a.shape[1]
     topI = 0
     botI = rows
@@ -20,27 +21,27 @@ def find_contour(im, sec, accuracy=10):
         mean = a[i * accuracy:i * accuracy + accuracy, int(cols / 10):int(9 * cols / 10)].mean()
         # prev_mean = a[i*accuracy-accuracy:i*accuracy, int(cols/10):int(9*cols/10)].mean()
 
-        if mean < 255:  # and prev_mean > 254:
+        if mean < MAX:  # and prev_mean > 254:
             topI = i
             break
     for i in range(int(rows / accuracy), 0, -1):
         mean = a[(i - 1) * accuracy:i * accuracy, int(cols / 10):int(9 * cols / 10)].mean()
         # prev_mean = a[i*accuracy:i*accuracy+accuracy, int(cols/10):int(9*cols/10)].mean()
 
-        if mean < 255:  # and prev_mean > 254:
+        if mean < MAX:  # and prev_mean > 254:
             botI = i
             break
 
     for j in range(int(cols / accuracy)):
         mean = a[int(rows / 10):int(9 * rows / 10), j * accuracy:j * accuracy + accuracy].mean()
         # prev_mean = a[int(rows/10):int(9*rows/10), j*accuracy-accuracy:j*accuracy].mean()
-        if mean < 255:  # and prev_mean > 254:
+        if mean < MAX:  # and prev_mean > 254:
             leftJ = j
             break
     for j in range(int(cols / accuracy), 0, -1):
         mean = a[int(rows / 10):int(9 * rows / 10), (j - 1) * accuracy:j * accuracy].mean()
         # prev_mean = a[int(rows/10):int(9*rows/10), j*accuracy:j*accuracy+accuracy].mean()
-        if mean < 255:  # and prev_mean > 254:
+        if mean < MAX:  # and prev_mean > 254:
             rightJ = j
             break
 
@@ -56,9 +57,9 @@ def process_image(name):
     # mean = img.mean()
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # if med < 250:
-    # print(mean, img.mean())
+    # print(img.mean())
     secondary = img.copy()
-    ret, img = cv2.threshold(img, img.mean() - 135, 255, cv2.THRESH_BINARY)
+    ret, img = cv2.threshold(img, img.mean() - 20, 255, cv2.THRESH_BINARY)
     orig = img.copy()
     # output = img.copy()
     img = 255 - img
@@ -111,8 +112,9 @@ def match_header(img):
 
 
 names = ['cat.jpg', 'im54.png', 'yellow.jpg', '1Doc.jpg', 'mirror.png', 'im12.png', 'im13.png',
-         'im1.png', 'test.png', 'real-0.jpg', 'real-1.jpg', 'wrong.png', 'wrong1.png', 'wrong3.png']
-# names = ['yellow.jpg']
+         'im1.png', 'test.png', 'real-0.jpg', 'real-1.jpg', 'wrong.png', 'wrong1.png', 'wrong3.png',
+         'real-0.jpg', 'real-1.jpg', 'real-3.jpg']
+# names = ['real-3.jpg']
 MAX_HEADER_DIFF = 10000
 count = 0
 ht = HeaderToText()
@@ -122,21 +124,26 @@ doc_names = ['до 18', 'до 14']
 for n in names:
     start = time.time()
     processed, second = process_image(n)
-    # cv2.imwrite(f'{count}.png', second)
-    header = second[:75, :]
-    # croped_header = header
-    # croped_header, s = find_contour(header, header, accuracy=1)
-    # res = match_header(croped_header)
-    try:
-        pass
-        # print(count)
-        # cv2.imwrite(f'Headers/header{count}.png', header)
-    except Exception as e:
-        pass
-    # print(ht.convert(f'Headers/header{count}.png'))
-    count += 1
-    _id = hm.classify(header)
-    times.append(time.time() - start)
-    if _id >= 0:
-        print(doc_names[_id])
+    if processed.shape[1] > 0 and processed.shape[0] > 0:
+        cv2.imwrite(f'{count}.png', processed)
+        header = second[:75, :]
+
+        cv2.namedWindow('image', cv2.WINDOW_NORMAL)
+        cv2.imshow('image', header)
+        cv2.waitKey()
+        # croped_header = header
+        # croped_header, s = find_contour(header, header, accuracy=1)
+        # res = match_header(croped_header)
+        try:
+            pass
+            # print(count)
+            # cv2.imwrite(f'Headers/header{count}.png', header)
+        except Exception as e:
+            pass
+        # print(ht.convert(f'Headers/header{count}.png'))
+        count += 1
+        _id = hm.classify(header)
+        times.append(time.time() - start)
+        if _id >= 0:
+            print(doc_names[_id])
 print(np.mean(times))

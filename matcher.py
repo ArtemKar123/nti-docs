@@ -10,8 +10,8 @@ from os.path import isfile, join
 class HeaderMatcher:
     def __init__(self):
         self.visualize = False
-        template = cv2.imread('18.png')
-        template2 = cv2.imread('14.png')
+        template = cv2.imread('18ref.png')
+        template2 = cv2.imread('14ref.png')
         template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
         template2 = cv2.cvtColor(template2, cv2.COLOR_BGR2GRAY)
         # template = 255 - template
@@ -27,6 +27,8 @@ class HeaderMatcher:
         idx = -1
         skip_first = False
         # loop over the scales of the image
+        if image.shape[1] == 0 or image.shape[0] == 0:
+            return -1
         for scale in np.linspace(0.8, 1.2, 20)[::-1]:
             # resize the image according to the scale, and keep track
             # of the ratio of the resizing
@@ -50,8 +52,8 @@ class HeaderMatcher:
             return -1
         else:
             (_, maxLoc, r) = found
-            # print(time.time()-start)
-            if found[0] < 2500000:
+            # print(found[0])
+            if found[0] < 2400000:
                 return -1
             else:
                 return idx
