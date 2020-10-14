@@ -66,11 +66,11 @@ def process_image(name):
 
     kernel = np.ones((10, 10), np.uint8)
     dilation = cv2.dilate(img, kernel, iterations=5)
-    dilation = 255 - dilation
+    # dilation = 255 - dilation
     contours, hierarchy = cv2.findContours(dilation, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     angles = []
     # print(len(contours))
-    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:2]
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:1]
     for cnt in contours:
         rect = cv2.minAreaRect(cnt)
         box = cv2.boxPoints(rect)
