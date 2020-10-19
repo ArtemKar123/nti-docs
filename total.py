@@ -8,7 +8,7 @@ from os import listdir
 from os.path import isfile, join
 
 
-def find_contour(im, sec, accuracy=10):
+def find_contour(im, sec, accuracy=10, mode=1):
     a = im
     top_found = False
     bot_found = False
@@ -20,38 +20,45 @@ def find_contour(im, sec, accuracy=10):
     botI = rows
     leftJ = 0
     rightJ = cols
-    for i in range(int(rows / accuracy)):
-        mean = a[i * accuracy:i * accuracy + accuracy, int(cols / 10):int(9 * cols / 10)].mean()
-        # prev_mean = a[i*accuracy-accuracy:i*accuracy, int(cols/10):int(9*cols/10)].mean()
+    if mode != 2:
+        prev_mean = 0
+        for i in range(int(rows / accuracy) // 2):
+            mean = a[i * accuracy:i * accuracy + accuracy, int(cols / 10):int(9 * cols / 10)].mean()
+            # prev_mean = a[i*accuracy-accuracy:i*accuracy, int(cols/10):int(9*cols/10)].mean()
 
-        if mean < MAX:  # and prev_mean > 254:
-            topI = i
-            break
-    for i in range(int(rows / accuracy), 0, -1):
-        mean = a[(i - 1) * accuracy:i * accuracy, int(cols / 10):int(9 * cols / 10)].mean()
-        # prev_mean = a[i*accuracy:i*accuracy+accuracy, int(cols/10):int(9*cols/10)].mean()
+            if mean < MAX:
+                topI = i
+                break
+        prev_mean = 0
+        for i in range(int(rows / accuracy), int(rows / accuracy) // 2, -1):
+            mean = a[(i - 1) * accuracy:i * accuracy, int(cols / 10):int(9 * cols / 10)].mean()
+            # prev_mean = a[i*accuracy:i*accuracy+accuracy, int(cols/10):int(9*cols/10)].mean()
 
-        if mean < MAX:  # and prev_mean > 254:
-            botI = i
-            break
+            if mean < MAX:  # and prev_mean > 254:
+                botI = i
+                break
+            # prev_mean = mean
 
-    for j in range(int(cols / accuracy)):
+    prev_mean = 0
+    for j in range(int(cols / accuracy) // 2):
         mean = a[int(rows / 10):int(9 * rows / 10), j * accuracy:j * accuracy + accuracy].mean()
-        # prev_mean = a[int(rows/10):int(9*rows/10), j*accuracy-accuracy:j*accuracy].mean()
-        if mean < MAX:  # and prev_mean > 254:
+        if mean < MAX:
             leftJ = j
             break
-    for j in range(int(cols / accuracy), 0, -1):
+
+    prev_mean = 0
+    for j in range(int(cols / accuracy), int(cols / accuracy) // 2, -1):
         mean = a[int(rows / 10):int(9 * rows / 10), (j - 1) * accuracy:j * accuracy].mean()
         # prev_mean = a[int(rows/10):int(9*rows/10), j*accuracy:j*accuracy+accuracy].mean()
-        if mean < MAX:  # and prev_mean > 254:
+        if mean < MAX:
             rightJ = j
             break
 
     #    print(topI, botI, leftJ, rightJ)
     half = int(accuracy / 2)
     a = a[topI * accuracy - half:botI * accuracy + half, leftJ * accuracy - half:rightJ * accuracy + half]
-    sec = sec[topI * accuracy - half:botI * accuracy + half, leftJ * accuracy - half:rightJ * accuracy + half]
+    if mode != 2:
+        sec = sec[topI * accuracy - half:botI * accuracy + half, leftJ * accuracy - half:rightJ * accuracy + half]
     return a, sec
 
 
@@ -63,8 +70,9 @@ def process_image(name):
     # print(img.mean())
     secondary = img.copy()
     ret, img = cv2.threshold(img, img.mean() - 20, 255, cv2.THRESH_BINARY)
+    # img, _s = find_contour(img, img)
+    # cv2.imwrite('pre0.png', img)
     orig = img.copy()
-    # output = img.copy()
     img = 255 - img
 
     kernel = np.ones((10, 10), np.uint8)
@@ -73,45 +81,89 @@ def process_image(name):
     contours, hierarchy = cv2.findContours(dilation, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     angles = []
     # print(len(contours))
-    contours = sorted(contours, key=cv2.contourArea, reverse=True)[:1]
-    for cnt in contours:
-        rect = cv2.minAreaRect(cnt)
-        box = cv2.boxPoints(rect)
-        # box = np.int0(box)
-        angle = rect[2]
-        # if angle > -89 and angle < 89:
-        if angle < -45:
-            angle = (90 + angle)
-        angles.append(angle)
-    #  output = cv2.drawContours(output,[box],0,(0,0,255),2)
-    # cv2.imwrite('dilated.png', dilation)
-    # cv2.imwrite('out.png', output)
-    angles = np.array(angles)
-    if angles.mean() < 0:
-        angle = angles.min()
-    else:
-        angle = angles.max()
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+
+    cnt = contours[0]
+    rect = cv2.minAreaRect(cnt)
+    angle = rect[2]
+    # if angle > -89 and angle < 89:
+    if angle < -45:
+        angle = (90 + angle)
+
     # print(angle, angles)
     rows, cols = orig.shape[0], orig.shape[1]
     M = cv2.getRotationMatrix2D((cols / 2, rows / 2), angle, 1)
     dst = cv2.warpAffine(orig, M, (cols, rows), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
     secondary = cv2.warpAffine(secondary, M, (cols, rows), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+
+    img = dst.copy()
+    # output = img.copy()
+    img = 255 - img
+    kernel = np.ones((10, 10), np.uint8)
+    dilation = cv2.dilate(img, kernel, iterations=5)
+    # dilation = 255 - dilation
+    contours, hierarchy = cv2.findContours(dilation, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    #    print(len(contours))
+    contours = sorted(contours, key=lambda x: cv2.contourArea(np.int0(cv2.boxPoints(cv2.minAreaRect(x)))),
+                      reverse=True)[:]
+    na = cv2.contourArea(np.int0(cv2.boxPoints(cv2.minAreaRect(contours[1]))))
+    if na > 1000000 or na < 100000:
+        contours = contours[1:]
+    minX = minY = 100000
+    maxX = maxY = 0
+    # cv2.namedWindow('out', cv2.WINDOW_NORMAL)
+    counted = 0
+    total_area = 0
+    for cnt in contours:
+        rect = cv2.minAreaRect(cnt)
+        box = cv2.boxPoints(rect)
+        box = np.int0(box)
+        area = cv2.contourArea(box)
+        # print(area)
+        if area < 50000:
+            break
+        total_area += area
+        counted += 1
+        for b in box:
+            x = b[0]
+            y = b[1]
+            if x < minX: minX = x
+            if y < minY: minY = y
+            if x > maxX: maxX = x
+            if y > maxY: maxY = y
+
+        # orig = orig[:, cx - w // 2: cx + w // 2]
+        # secondary = secondary[:, cx - w // 2: cx + w // 2]
+        # output = cv2.drawContours(output, [box], 0, (0, 0, 255), 3)
+        # cv2.imshow('out', output)
+        # cv2.waitKey()
+        # cv2.imwrite('out.png', output)
+        # print(2)
+    # print(total_area)
+    if counted >= 1:
+        w = int((maxX - minX) * 1.05)
+        h = int((maxY - minY) * 1.05)
+        shape = dst.shape
+        if w > shape[1] or w < shape[1] / 2:
+            w = shape[1]
+            cx = shape[1] // 2
+        else:
+            cx = (maxX + minX) // 2
+        if h > shape[0] or h < shape[0] / 2:
+            h = shape[0]
+            cy = shape[0] // 2
+        else:
+            cy = (maxY + minY) // 2
+        # print(w, h, cx, cy)
+        dst = dst[cy - h // 2: cy + h // 2, cx - w // 2: cx + w // 2]
+        secondary = secondary[cy - h // 2: cy + h // 2, cx - w // 2: cx + w // 2]
+    # cv2.imwrite('dilated.png', output)
+
     # cv2.imwrite('rotated.png', dst)
     dst, secondary = find_contour(dst, secondary)
+    # cv2.imwrite('dst.png', dst)
     # cv2.imwrite('croped.png', dst)
     return dst, secondary
-
-
-def match_header(img):
-    ref = cv2.imread('cropedRef.png')
-    ref = cv2.cvtColor(ref, cv2.COLOR_BGR2GRAY)
-    # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    if not ref.shape == img.shape:
-        img = cv2.resize(img, (ref.shape[1], ref.shape[0]), interpolation=cv2.INTER_AREA)
-    diff_img = cv2.absdiff(img, ref)
-    tile_diff = int(np.sum(diff_img) / 255)
-    # print('header diff:', tile_diff)
-    return tile_diff
 
 
 # names = ['cat.jpg', 'im54.png', 'yellow.jpg', '1Doc.jpg', 'mirror.png', 'im12.png', 'im13.png',
@@ -124,8 +176,6 @@ count = 0
 ap = argparse.ArgumentParser()
 ap.add_argument("-p", "--path", required=True,
                 help="Path to image")
-ap.add_argument("-m", "--mode", required=False,
-                help="Mode:\n0 -- all, used by default; 1 -- 14; 2 -- 14-18; 3 -- soglasie na obrabotku")
 args = vars(ap.parse_args())
 
 vd = Validator()
@@ -138,13 +188,20 @@ dir_path = args['path']
 names = [dir_path + f for f in listdir(dir_path) if isfile(join(dir_path, f))]
 # print(names)
 for n in names:
+    print(n)
     start = time.time()
     try:
         processed, second = process_image(n)
+        # print(processed.shape)
         if processed.shape[1] > 0 and processed.shape[0] > 0:
             # cv2.imwrite(f'{count}.png', processed)
             header = second[:75, :]
-
+            help_header = processed[:50, :]
+            # print('prLen', processed.shape[1])
+            help_header, _s = find_contour(help_header, help_header, accuracy=1, mode=2)
+            # processed_header, s = find_contour(header, header, accuracy=1, mode=2)
+            cv2.imwrite(f'Headers/header{count}.png', help_header)
+            # print(processed_header.shape)
             #       cv2.namedWindow('image', cv2.WINDOW_NORMAL)
             #      cv2.imshow('image', header)
             #     cv2.waitKey()
@@ -152,22 +209,24 @@ for n in names:
             # croped_header, s = find_contour(header, header, accuracy=1)
             # res = match_header(header)
             # print(res)
-            try:
-                pass
-                # print(count)
-                # cv2.imwrite(f'Headers/header{count}.png', header)
-            except Exception as e:
-                pass
             # print(ht.convert(f'Headers/header{count}.png'))
             count += 1
-            _id = hm.classify(header)
-            times.append(time.time() - start)
+            _id = hm.classify(header, help_header, processed.shape[1])
+            # _id = -1
+            # width = processed_header.shape[1]
+            # if width in range(1750, 1800):
+            #    _id = 0
+            # elif width in range(1600, 1705):
+            #    _id = 1
+            # elif width in range(625, 700):
+            #    _id = 2
             if _id >= 0:
-                print(n, doc_names[_id])
+                print(doc_names[_id])
                 print(vd.validate(processed, _id))
             else:
                 pass
                 # print(n, 'no')
+            times.append(time.time() - start)
     except Exception as e:
         pass
         # print(n, 'no')
