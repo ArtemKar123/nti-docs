@@ -3,7 +3,6 @@ import cv2
 import numpy as np
 import time
 import argparse
-from segmentation import HeaderToText
 from validator import Validator
 from os import listdir
 from os.path import isfile, join
@@ -129,7 +128,6 @@ ap.add_argument("-m", "--mode", required=False,
                 help="Mode:\n0 -- all, used by default; 1 -- 14; 2 -- 14-18; 3 -- soglasie na obrabotku")
 args = vars(ap.parse_args())
 
-ht = HeaderToText()
 vd = Validator()
 times = []
 hm = HeaderMatcher()
