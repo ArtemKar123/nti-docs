@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import time
 from segmentation import HeaderToText
-
+from validator import Validator
 
 def find_contour(im, sec, accuracy=10):
     a = im
@@ -114,36 +114,46 @@ def match_header(img):
 names = ['cat.jpg', 'im54.png', 'yellow.jpg', '1Doc.jpg', 'mirror.png', 'im12.png', 'im13.png',
          'im1.png', 'test.png', 'real-0.jpg', 'real-1.jpg', 'wrong.png', 'wrong1.png', 'wrong3.png',
          'real-0.jpg', 'real-1.jpg', 'real-3.jpg']
-# names = ['real-3.jpg']
+names = ['cat.jpg', 'im54.png', 'wrong1.png', 'real-6.jpg', 'real-8.jpg', 'real-9.jpg']
 MAX_HEADER_DIFF = 10000
 count = 0
 ht = HeaderToText()
+vd = Validator()
 times = []
 hm = HeaderMatcher()
-doc_names = ['до 18', 'до 14']
+doc_names = ['до 14', 'до 18', 'согласие']
 for n in names:
     start = time.time()
-    processed, second = process_image(n)
-    if processed.shape[1] > 0 and processed.shape[0] > 0:
-        cv2.imwrite(f'{count}.png', processed)
-        header = second[:75, :]
+    try:
+        processed, second = process_image(n)
+        if processed.shape[1] > 0 and processed.shape[0] > 0:
+            # cv2.imwrite(f'{count}.png', processed)
+            header = second[:75, :]
 
-        cv2.namedWindow('image', cv2.WINDOW_NORMAL)
-        cv2.imshow('image', header)
-        cv2.waitKey()
-        # croped_header = header
-        # croped_header, s = find_contour(header, header, accuracy=1)
-        # res = match_header(croped_header)
-        try:
-            pass
-            # print(count)
-            # cv2.imwrite(f'Headers/header{count}.png', header)
-        except Exception as e:
-            pass
-        # print(ht.convert(f'Headers/header{count}.png'))
-        count += 1
-        _id = hm.classify(header)
-        times.append(time.time() - start)
-        if _id >= 0:
-            print(doc_names[_id])
+            #       cv2.namedWindow('image', cv2.WINDOW_NORMAL)
+            #      cv2.imshow('image', header)
+            #     cv2.waitKey()
+            # croped_header = header
+            # croped_header, s = find_contour(header, header, accuracy=1)
+            # res = match_header(header)
+            # print(res)
+            try:
+                pass
+                # print(count)
+                # cv2.imwrite(f'Headers/header{count}.png', header)
+            except Exception as e:
+                pass
+            # print(ht.convert(f'Headers/header{count}.png'))
+            count += 1
+            _id = hm.classify(header)
+            times.append(time.time() - start)
+            if _id >= 0:
+                print(n, doc_names[_id])
+                print(vd.validate(processed, _id))
+            else:
+                pass
+                # print(n, 'no')
+    except Exception as e:
+        pass
+        # print(n, 'no')
 print(np.mean(times))
