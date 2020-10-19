@@ -200,7 +200,7 @@ for n in names:
             # print('prLen', processed.shape[1])
             help_header, _s = find_contour(help_header, help_header, accuracy=1, mode=2)
             # processed_header, s = find_contour(header, header, accuracy=1, mode=2)
-            cv2.imwrite(f'Headers/header{count}.png', help_header)
+            # cv2.imwrite(f'Headers/header{count}.png', help_header)
             # print(processed_header.shape)
             #       cv2.namedWindow('image', cv2.WINDOW_NORMAL)
             #      cv2.imshow('image', header)

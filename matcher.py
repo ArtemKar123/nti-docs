@@ -25,10 +25,6 @@ class HeaderMatcher:
         self.templates = [template, template2, template3]
         self.found_1 = self.found_2 = self.found_3 = 0
 
-    def printsome(self):
-        print('a')
-        return True
-
     def classify(self, image, help_header, help_len):
         self.found_1 = self.found_2 = self.found_3 = 0
         # orig = image.copy()
@@ -84,7 +80,7 @@ class HeaderMatcher:
                 elif f1 > self.MAX and f2 > self.MAX:
                     width = help_header.shape[1]
                     coef = width / help_len
-                    print(width, width / help_len)
+                    # print(width, width / help_len)
                     if 0.9 < coef < 0.96:
                         idx = 0
                     elif 0.84 < coef < 0.9:
