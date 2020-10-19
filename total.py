@@ -2,8 +2,12 @@ from matcher import HeaderMatcher
 import cv2
 import numpy as np
 import time
+import argparse
 from segmentation import HeaderToText
 from validator import Validator
+from os import listdir
+from os.path import isfile, join
+
 
 def find_contour(im, sec, accuracy=10):
     a = im
@@ -111,17 +115,30 @@ def match_header(img):
     return tile_diff
 
 
-names = ['cat.jpg', 'im54.png', 'yellow.jpg', '1Doc.jpg', 'mirror.png', 'im12.png', 'im13.png',
-         'im1.png', 'test.png', 'real-0.jpg', 'real-1.jpg', 'wrong.png', 'wrong1.png', 'wrong3.png',
-         'real-0.jpg', 'real-1.jpg', 'real-3.jpg']
-names = ['cat.jpg', 'im54.png', 'wrong1.png', 'real-6.jpg', 'real-8.jpg', 'real-9.jpg']
-MAX_HEADER_DIFF = 10000
+# names = ['cat.jpg', 'im54.png', 'yellow.jpg', '1Doc.jpg', 'mirror.png', 'im12.png', 'im13.png',
+#          'im1.png', 'test.png', 'real-0.jpg', 'real-1.jpg', 'wrong.png', 'wrong1.png', 'wrong3.png',
+#          'real-0.jpg', 'real-1.jpg', 'real-3.jpg']
+# names = ['cat.jpg', 'im54.png', 'wrong1.png', 'real-6.jpg', 'real-8.jpg', 'real-9.jpg']
+# MAX_HEADER_DIFF = 10000
 count = 0
+
+ap = argparse.ArgumentParser()
+ap.add_argument("-p", "--path", required=True,
+                help="Path to image")
+ap.add_argument("-m", "--mode", required=False,
+                help="Mode:\n0 -- all, used by default; 1 -- 14; 2 -- 14-18; 3 -- soglasie na obrabotku")
+args = vars(ap.parse_args())
+
 ht = HeaderToText()
 vd = Validator()
 times = []
 hm = HeaderMatcher()
 doc_names = ['до 14', 'до 18', 'согласие']
+
+dir_path = args['path']
+# print(dir_path)
+names = [dir_path + f for f in listdir(dir_path) if isfile(join(dir_path, f))]
+# print(names)
 for n in names:
     start = time.time()
     try:
