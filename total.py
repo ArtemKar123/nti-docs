@@ -1,3 +1,4 @@
+import os
 from matcher import HeaderMatcher
 import cv2
 import numpy as np
@@ -60,6 +61,66 @@ def find_contour(im, sec, accuracy=10, mode=1):
     if mode != 2:
         sec = sec[topI * accuracy - half:botI * accuracy + half, leftJ * accuracy - half:rightJ * accuracy + half]
     return a, sec
+
+
+def get_max_y(box, mode=0):
+    m = 0
+    mi = 10000
+    for b in box:
+        y = b[1]
+        if y > m:
+            m = y
+        if y < mi:
+            mi = y
+    if mode == 0 and (m - mi > 50 or m - mi < 3):
+        return -1
+    else:
+        return m
+
+
+def get_width(box):
+    m = 0
+    mi = 10000
+    for b in box:
+        x = b[0]
+        if b[0] > m:
+            m = x
+        if b[0] < mi:
+            mi = x
+    return m - mi
+
+
+def find_lines(im):
+    im = cv2.bitwise_not(im)
+    horizontal = np.copy(im)
+    out = horizontal.copy()
+    out = cv2.cvtColor(out, cv2.COLOR_GRAY2BGR)
+    cols = horizontal.shape[1]
+    horizontal_size = cols // 30
+    # Create structure element for extracting horizontal lines through morphology operations
+    horizontalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (horizontal_size, 1))
+    # Apply morphology operations
+    horizontal = cv2.erode(horizontal, horizontalStructure)
+    horizontal = cv2.dilate(horizontal, horizontalStructure)
+    contours, hierarchy = cv2.findContours(horizontal, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    contours = sorted(contours, key=lambda x: get_max_y(cv2.boxPoints(cv2.minAreaRect(x))), reverse=True)[:]
+    # cv2.namedWindow('out', cv2.WINDOW_NORMAL)
+    for cnt in contours:
+        rect = cv2.minAreaRect(cnt)
+        box = cv2.boxPoints(rect)
+        box = np.int0(box)
+        w = get_width(box)  # 255 259
+        # print(w)
+        coef = w / cols
+        if 0.099 < coef < 0.14:
+            # print(w / cols)
+            # out = cv2.drawContours(out, [box], 0, (0, 0, 255), 3)
+            # cv2.imshow('out', out)
+            # cv2.waitKey()
+            return get_max_y(box, mode=1)
+            # print(y)
+        # break
+    return 1000000
 
 
 def process_image(name):
@@ -161,6 +222,15 @@ def process_image(name):
 
     # cv2.imwrite('rotated.png', dst)
     dst, secondary = find_contour(dst, secondary)
+
+    y = find_lines(dst)
+    y += 5
+    _h = dst.shape[0]
+    # print(y, dst.shape)
+    if y > _h:
+        y = _h
+    dst = dst[:y, :]
+    secondary = secondary[:y, :]
     # cv2.imwrite('dst.png', dst)
     # cv2.imwrite('croped.png', dst)
     return dst, secondary
@@ -185,7 +255,7 @@ doc_names = ['до 14', 'до 18', 'согласие']
 
 dir_path = args['path']
 # print(dir_path)
-names = [dir_path + f for f in listdir(dir_path) if isfile(join(dir_path, f))]
+names = [os.path.join(dir_path, f) for f in listdir(dir_path) if isfile(join(dir_path, f))]
 # print(names)
 for n in names:
     print(n)
@@ -194,7 +264,7 @@ for n in names:
         processed, second = process_image(n)
         # print(processed.shape)
         if processed.shape[1] > 0 and processed.shape[0] > 0:
-            # cv2.imwrite(f'{count}.png', processed)
+            cv2.imwrite(f'{count}.png', processed)
             header = second[:75, :]
             help_header = processed[:50, :]
             # print('prLen', processed.shape[1])

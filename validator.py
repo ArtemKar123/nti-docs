@@ -40,10 +40,14 @@ class Validator:
                         [(807, 1396), (847, 1425)],
                         [(863, 1396), (944, 1425)], [(985, 1396), (1014, 1425)]]
 
-        self.zones_sogl = [[(4, 69), (885, 88)], [(4, 109), (1087, 124)], [(71, 129), (917, 144)],
-                           [(4, 148), (247, 165)], [(5, 169), (876, 185)], [(3, 208), (1085, 222)],
-                           [(797, 1360), (913, 1394)],
-                           [(974, 1360), (1085, 1394)], ]
+        # self.zones_sogl = [[(4, 69), (885, 88)], [(4, 109), (1087, 124)], [(71, 129), (917, 144)],
+        #                    [(4, 148), (247, 165)], [(5, 169), (876, 185)], [(3, 208), (1085, 222)],
+        #                    [(797, 1360), (913, 1394)],
+        #                    [(974, 1360), (1085, 1394)], ]
+        self.zones_sogl = [[(4, 74), (885, 88)], [(4, 114), (1087, 128)], [(71, 133), (917, 147)],
+                           [(4, 154), (247, 167)], [(3, 174), (876, 189)], [(3, 212), (1085, 227)],
+                           [(797, 1382), (913, 1427)],
+                           [(975, 1382), (1081, 1427)], ]
         self.zones = [self.zones14, self.zones18, self.zones_sogl]
         self.optional_zones = [[8], [22], [4]]
         pass
@@ -65,7 +69,8 @@ class Validator:
                 break
         #    print(topI, botI, leftJ, rightJ)
         half = int(accuracy / 2)
-        a = a[topI * accuracy - half:botI * accuracy - 5, leftJ * accuracy - half:rightJ * accuracy + half]
+        a = a[topI * accuracy - half:botI * accuracy - self.top_offset,
+            leftJ * accuracy - half:rightJ * accuracy - self.left_offset]
         return a
 
     def find_offset(self, im, accuracy=1):
@@ -90,9 +95,9 @@ class Validator:
 
     def validate(self, image, code):
         image = cv2.resize(image, (1095, 1435), interpolation=cv2.INTER_LINEAR_EXACT)
-        top_offset, left_offset = self.find_offset(image)
-        top_offset -= 2
-        left_offset -= 1
+        self.top_offset, self.left_offset = self.find_offset(image)
+        self.top_offset -= 2
+        self.left_offset -= 1
         # print(top_offset, left_offset)
         # start = time.time()
         c = 0
@@ -103,8 +108,8 @@ class Validator:
             # print(c)
             c += 1
             zone = (
-                (zone[0][0] + left_offset, zone[0][1] + top_offset),
-                (zone[1][0] + left_offset, zone[1][1] + top_offset))
+                (zone[0][0] + self.left_offset, zone[0][1] + self.top_offset),
+                (zone[1][0] + self.left_offset, zone[1][1] + self.top_offset))
             slc = image[zone[0][1]:zone[1][1], zone[0][0]:zone[1][0]]
             # slc = cv2.cvtColor(slc, cv2.COLOR_BGR2GRAY)
             slc = self.find_contour(slc)
@@ -123,18 +128,21 @@ class Validator:
                 else:
                     is_valid = False
             # print('mean', np.mean(slc), np.median(slc))
-        # rect = ((zone[0][0], zone[0][1]), (zone[1][0], zone[1][1]), 0)
-        # im = img[zone[0][1]:zone[1][1], zone[0][0]:zone[1][0]]
-        #   output = cv2.rectangle(image, zone[0], zone[1], (0, 0, 255), 2)
-        #   cv2.namedWindow('contour', cv2.WINDOW_NORMAL)
-        #   cv2.namedWindow('slice')
-        #   cv2.imshow('contour', output)
-        #   cv2.imshow('slice', slc)
-        #   cv2.waitKey()
+            # rect = ((zone[0][0], zone[0][1]), (zone[1][0], zone[1][1]), 0)
+            # im = img[zone[0][1]:zone[1][1], zone[0][0]:zone[1][0]]
+            # output = cv2.rectangle(image, zone[0], zone[1], (0, 0, 255), 2)
+            # cv2.namedWindow('contour', cv2.WINDOW_NORMAL)
+            # cv2.namedWindow('slice')
+            # cv2.imshow('contour', output)
+            # cv2.imshow('slice', slc)
+            # cv2.waitKey()
         # print(time.time() - start)
         return is_valid
 
 # img = cv2.imread('0.png')
+# img = cv2.resize(img, (1095, 1435), interpolation=cv2.INTER_LINEAR_EXACT)
+
+
 # vald = Validator()
 # print(vald.validate(img, 0))
 
@@ -144,7 +152,7 @@ class Validator:
 #     cv2.imshow('image', im[i * PARAM:i * PARAM + PARAM, :])
 #     cv2.waitKey()
 
-
+#
 # def draw_circle(event, x, y, flags, param):
 #     global mouseX, mouseY
 #     if event == cv2.EVENT_LBUTTONDBLCLK:
@@ -153,9 +161,11 @@ class Validator:
 #         print(mouseX, mouseY)
 #
 #
-# cv2.namedWindow('image', )
+# #
+# #
+# cv2.namedWindow('image', cv2.WINDOW_NORMAL)
 # cv2.setMouseCallback('image', draw_circle)
-#
+# #
 # while (1):
 #     cv2.imshow('image', img)
 #     k = cv2.waitKey(20) & 0xFF
