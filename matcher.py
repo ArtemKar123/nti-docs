@@ -25,7 +25,8 @@ class HeaderMatcher:
         self.templates = [template, template2, template3]
         self.found_1 = self.found_2 = self.found_3 = 0
 
-    def classify(self, image):
+    def classify(self, image, help_header, help_len):
+        self.found_1 = self.found_2 = self.found_3 = 0
         # orig = image.copy()
         # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         found = None
@@ -51,15 +52,16 @@ class HeaderMatcher:
                 try:
                     result = cv2.matchTemplate(edged, template, cv2.TM_CCOEFF)
                     (_, maxVal, _, maxLoc) = cv2.minMaxLoc(result)
+                    _found = (maxVal, maxLoc, r)
                     if found is None or maxVal > found[0]:
-                        found = (maxVal, maxLoc, r)
+                        found = _found
                         idx = i
-                        if i == 0:
-                            self.found_1 = found[0]
-                        elif i == 1:
-                            self.found_2 = found[0]
-                        else:
-                            self.found_3 = found[0]
+                    if i == 0 and maxVal > self.found_1:
+                        self.found_1 = maxVal
+                    elif i == 1 and maxVal > self.found_2:
+                        self.found_2 = maxVal
+                    elif maxVal > self.found_3:
+                        self.found_3 = maxVal
                 except Exception as e:
                     pass
         if found is None:
@@ -71,21 +73,29 @@ class HeaderMatcher:
             if found[0] < self.MAX:
                 return -1
             else:
-                if idx == 1:
-                    f1 = self.found_1
-                    if f1 > self.MAX:
-                        return 0
-                elif idx == 2:
-                    f1 = self.found_1
-                    f2 = self.found_2
-                    if f1 > self.MAX:
-                        if f1 > f2:
-                            return 0
-                        elif f2 > f1:
-                            return 1
-                    else:
-                        return 2
-                return idx
+                f1 = self.found_1
+                f2 = self.found_2
+                if f1 < self.MAX and f2 < self.MAX:
+                    return 2
+                elif f1 > self.MAX and f2 > self.MAX:
+                    width = help_header.shape[1]
+                    coef = width / help_len
+                    # print(width, width / help_len)
+                    if 0.9 < coef < 0.96:
+                        idx = 0
+                    elif 0.84 < coef < 0.9:
+                        idx = 1
+                    return idx
+                else:
+                    width = help_header.shape[1]
+                    coef = width / help_len
+                    # print(width, width / help_len)
+                    if 0.9 < coef < 0.96:
+                        idx = 0
+                    elif 0.84 < coef < 0.9:
+                        idx = 1
+                    return idx
+
 # hm = HeaderMatcher()
 # id = hm.classify(cv2.imread('Headers/header12.png'))
 # print(id)
