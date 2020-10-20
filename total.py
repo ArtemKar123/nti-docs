@@ -282,6 +282,8 @@ count = 0
 ap = argparse.ArgumentParser()
 ap.add_argument("-p", "--path", required=True,
                 help="Path to image")
+ap.add_argument("-t", "--timer", required=False, default=False, type=bool,
+                help='Activates time debug')
 args = vars(ap.parse_args())
 
 vd = Validator()
@@ -293,12 +295,14 @@ dir_path = args['path']
 # print(dir_path)
 names = [os.path.join(dir_path, f) for f in listdir(dir_path) if isfile(join(dir_path, f))]
 # print(names)
+time_deb = args['timer']
 for n in names:
-    print(n)
+    print(n, end=' ')
     start = time.time()
     try:
         processed, second = process_image(n)
         if type(processed) is int:
+            print(False)
             continue
         if processed.shape[1] > 0 and processed.shape[0] > 0:
             # cv2.imwrite(f'{count}.png', processed)
@@ -306,37 +310,20 @@ for n in names:
             help_header = processed[:50, :]
             # print('prLen', processed.shape[1])
             help_header, _s = find_contour(help_header, help_header, accuracy=1, mode=2)
-            # processed_header, s = find_contour(header, header, accuracy=1, mode=2)
-            # cv2.imwrite(f'Headers/header{count}.png', help_header)
-            # print(processed_header.shape)
-            #       cv2.namedWindow('image', cv2.WINDOW_NORMAL)
-            #      cv2.imshow('image', header)
-            #     cv2.waitKey()
-            # croped_header = header
-            # croped_header, s = find_contour(header, header, accuracy=1)
-            # res = match_header(header)
-            # print(res)
-            # print(ht.convert(f'Headers/header{count}.png'))
             count += 1
             _id = hm.classify(header, help_header, processed.shape[1])
-            # _id = -1
-            # width = processed_header.shape[1]
-            # if width in range(1750, 1800):
-            #    _id = 0
-            # elif width in range(1600, 1705):
-            #    _id = 1
-            # elif width in range(625, 700):
-            #    _id = 2
             if _id >= 0:
-                print(doc_names[_id], vd.validate(processed, _id))
+                # print(doc_names[_id])
+                print(vd.validate(processed, _id))
             else:
+                print(False)
                 pass
                 # print(n, 'no')
             times.append(time.time() - start)
     except Exception as e:
-        raise e
-        # print(e)
+        # raise e
+        print(False)
         pass
         # print(n, 'no')
-if len(times) > 0:
+if time_deb and len(times) > 0:
     print(np.mean(times))
