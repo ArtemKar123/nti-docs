@@ -7,6 +7,7 @@ import argparse
 from validator import Validator
 from os import listdir
 from os.path import isfile, join
+from pdf2image import convert_from_path
 
 
 def find_contour(im, sec, accuracy=10, mode=1):
@@ -128,14 +129,21 @@ def find_lines(im):
 
 
 def process_image(name):
-    img = cv2.imread(name)
+    if name[-4:] == '.pdf':
+        pages = convert_from_path(name, 200)
+        if len(pages) != 1:
+            return -1, -1
+        img = pages[0]
+        img = np.array(img)
+    else:
+        img = cv2.imread(name)
     # mean = img.mean()
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # if med < 250:
     # print(img.mean())
     secondary = img.copy()
 
-    dilated_img = cv2.dilate(img, np.ones((7, 7), np.uint8))
+    dilated_img = cv2.dilate(img, np.ones((4, 4), np.uint8))
     bg_img = cv2.medianBlur(dilated_img, 21)
     diff_img = 255 - cv2.absdiff(img, bg_img)
     img = cv2.normalize(diff_img, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
@@ -290,9 +298,10 @@ for n in names:
     start = time.time()
     try:
         processed, second = process_image(n)
-        # print(processed.shape)
+        if type(processed) is int:
+            continue
         if processed.shape[1] > 0 and processed.shape[0] > 0:
-            # cv2.imwrite(f'{count}.png', processed)
+            cv2.imwrite(f'{count}.png', processed)
             header = second[:75, :]
             help_header = processed[:50, :]
             # print('prLen', processed.shape[1])
@@ -325,6 +334,9 @@ for n in names:
                 # print(n, 'no')
             times.append(time.time() - start)
     except Exception as e:
+        raise e
+        # print(e)
         pass
         # print(n, 'no')
-print(np.mean(times))
+if len(times) > 0:
+    print(np.mean(times))

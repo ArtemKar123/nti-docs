@@ -87,23 +87,15 @@ class HeaderMatcher:
                         idx = 1
                     return idx
                 else:
+                    width = help_header.shape[1]
+                    coef = width / help_len
+                    # print(width, width / help_len)
+                    if 0.9 < coef < 0.96:
+                        idx = 0
+                    elif 0.84 < coef < 0.9:
+                        idx = 1
                     return idx
 
-                # if idx == 1:
-                #    f1 = self.found_1
-                #    if f1 > self.MAX:
-                #        return 0
-                # elif idx == 2:
-                #    f1 = self.found_1
-                #    f2 = self.found_2
-                #    if f1 > self.MAX:
-                #        if f1 > f2:
-                #            return 0
-                #        elif f2 > f1:
-                #            return 1
-                #    else:
-                #        return 2
-                # return idx
 # hm = HeaderMatcher()
 # id = hm.classify(cv2.imread('Headers/header12.png'))
 # print(id)

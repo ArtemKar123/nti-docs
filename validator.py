@@ -61,7 +61,8 @@ class Validator:
         leftJ = 0
         rightJ = cols
         for i in range(int(rows / accuracy), 0, -1):
-            mean = a[(i - 1) * accuracy:i * accuracy, int(cols / 10):int(9 * cols / 10)].mean()
+            zone = a[(i - 1) * accuracy:i * accuracy, int(cols / 10):int(9 * cols / 10)]
+            mean = zone.mean()
             # prev_mean = a[i*accuracy:i*accuracy+accuracy, int(cols/10):int(9*cols/10)].mean()
 
             if mean < MAX:  # and prev_mean > 254:
@@ -113,6 +114,9 @@ class Validator:
             slc = image[zone[0][1]:zone[1][1], zone[0][0]:zone[1][0]]
             # slc = cv2.cvtColor(slc, cv2.COLOR_BGR2GRAY)
             slc = self.find_contour(slc)
+
+            if slc.shape[0] <= 0 or slc.shape[1] <= 0:
+                continue
             mean = np.mean(slc)
             if mean > 250:
                 if code == 1:
