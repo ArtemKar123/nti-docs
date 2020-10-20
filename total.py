@@ -301,7 +301,7 @@ for n in names:
         if type(processed) is int:
             continue
         if processed.shape[1] > 0 and processed.shape[0] > 0:
-            cv2.imwrite(f'{count}.png', processed)
+            # cv2.imwrite(f'{count}.png', processed)
             header = second[:75, :]
             help_header = processed[:50, :]
             # print('prLen', processed.shape[1])
