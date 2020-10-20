@@ -10,7 +10,7 @@ from os.path import isfile, join
 
 
 def find_contour(im, sec, accuracy=10, mode=1):
-    a = im
+    a = im.copy()
     top_found = False
     bot_found = False
     left_found = False
@@ -24,32 +24,34 @@ def find_contour(im, sec, accuracy=10, mode=1):
     if mode != 2:
         prev_mean = 0
         for i in range(int(rows / accuracy) // 2):
-            mean = a[i * accuracy:i * accuracy + accuracy, int(cols / 10):int(9 * cols / 10)].mean()
+            mean = a[i * accuracy:i * accuracy + accuracy, :].mean()
             # prev_mean = a[i*accuracy-accuracy:i*accuracy, int(cols/10):int(9*cols/10)].mean()
 
             if mean < MAX:
                 topI = i
                 break
         prev_mean = 0
-        for i in range(int(rows / accuracy), int(rows / accuracy) // 2, -1):
-            mean = a[(i - 1) * accuracy:i * accuracy, int(cols / 10):int(9 * cols / 10)].mean()
-            # prev_mean = a[i*accuracy:i*accuracy+accuracy, int(cols/10):int(9*cols/10)].mean()
+        if mode != 3:
+            for i in range(int(rows / accuracy), int(rows / accuracy) // 2, -1):
+                mean = a[(i - 1) * accuracy:i * accuracy, :].mean()
+                # prev_mean = a[i*accuracy:i*accuracy+accuracy, int(cols/10):int(9*cols/10)].mean()
 
-            if mean < MAX:  # and prev_mean > 254:
-                botI = i
-                break
-            # prev_mean = mean
+                if mean < MAX:  # and prev_mean > 254:
+                    botI = i
+                    break
+        # prev_mean = mean
 
     prev_mean = 0
+    # print(a.shape)
     for j in range(int(cols / accuracy) // 2):
-        mean = a[int(rows / 10):int(9 * rows / 10), j * accuracy:j * accuracy + accuracy].mean()
+        mean = a[:, j * accuracy:j * accuracy + accuracy].mean()
         if mean < MAX:
             leftJ = j
             break
 
     prev_mean = 0
     for j in range(int(cols / accuracy), int(cols / accuracy) // 2, -1):
-        mean = a[int(rows / 10):int(9 * rows / 10), (j - 1) * accuracy:j * accuracy].mean()
+        mean = a[:, (j - 1) * accuracy:j * accuracy].mean()
         # prev_mean = a[int(rows/10):int(9*rows/10), j*accuracy:j*accuracy+accuracy].mean()
         if mean < MAX:
             rightJ = j
@@ -72,7 +74,7 @@ def get_max_y(box, mode=0):
             m = y
         if y < mi:
             mi = y
-    if mode == 0 and (m - mi > 50 or m - mi < 3):
+    if mode == 0 and (m - mi > 50 or m - mi < 0):
         return -1
     else:
         return m
@@ -94,7 +96,7 @@ def find_lines(im):
     im = cv2.bitwise_not(im)
     horizontal = np.copy(im)
     out = horizontal.copy()
-    out = cv2.cvtColor(out, cv2.COLOR_GRAY2BGR)
+    # out = cv2.cvtColor(out, cv2.COLOR_GRAY2BGR)
     cols = horizontal.shape[1]
     horizontal_size = cols // 30
     # Create structure element for extracting horizontal lines through morphology operations
@@ -112,7 +114,9 @@ def find_lines(im):
         w = get_width(box)  # 255 259
         # print(w)
         coef = w / cols
+        # print(coef)
         if 0.099 < coef < 0.14:
+            # print(coef)
             # print(w / cols)
             # out = cv2.drawContours(out, [box], 0, (0, 0, 255), 3)
             # cv2.imshow('out', out)
@@ -130,12 +134,19 @@ def process_image(name):
     # if med < 250:
     # print(img.mean())
     secondary = img.copy()
-    ret, img = cv2.threshold(img, img.mean() - 20, 255, cv2.THRESH_BINARY)
+
+    dilated_img = cv2.dilate(img, np.ones((7, 7), np.uint8))
+    bg_img = cv2.medianBlur(dilated_img, 21)
+    diff_img = 255 - cv2.absdiff(img, bg_img)
+    img = cv2.normalize(diff_img, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
+
+    blur = cv2.GaussianBlur(img, (3, 3), 0)
+    ret3, img = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # ret, img = cv2.threshold(img, img.mean() - 20, 255, cv2.THRESH_BINARY)
     # img, _s = find_contour(img, img)
     # cv2.imwrite('pre0.png', img)
     orig = img.copy()
     img = 255 - img
-
     kernel = np.ones((10, 10), np.uint8)
     dilation = cv2.dilate(img, kernel, iterations=5)
     # dilation = 255 - dilation
@@ -159,6 +170,7 @@ def process_image(name):
 
     img = dst.copy()
     # output = img.copy()
+
     img = 255 - img
     kernel = np.ones((10, 10), np.uint8)
     dilation = cv2.dilate(img, kernel, iterations=5)
@@ -167,23 +179,31 @@ def process_image(name):
     #    print(len(contours))
     contours = sorted(contours, key=lambda x: cv2.contourArea(np.int0(cv2.boxPoints(cv2.minAreaRect(x)))),
                       reverse=True)[:]
-    na = cv2.contourArea(np.int0(cv2.boxPoints(cv2.minAreaRect(contours[1]))))
-    if na > 1000000 or na < 100000:
-        contours = contours[1:]
+    # na = cv2.contourArea(np.int0(cv2.boxPoints(cv2.minAreaRect(contours[1]))))
+    # if na > 1000000 or na < 100000:
+    #        contours = contours[1:]
     minX = minY = 100000
     maxX = maxY = 0
     # cv2.namedWindow('out', cv2.WINDOW_NORMAL)
     counted = 0
-    total_area = 0
+    # total_area = 0
+
     for cnt in contours:
         rect = cv2.minAreaRect(cnt)
         box = cv2.boxPoints(rect)
         box = np.int0(box)
-        area = cv2.contourArea(box)
-        # print(area)
+        area = cv2.contourArea(cnt)
+        box_area = cv2.contourArea(box)
+        w = get_width(box)
+        # per = cv2.arcLength(cnt, True)
+        cnt_coef = box_area / area
+        # print(cnt_coef, box_area, box_area/area, box_area/cnt_coef)
         if area < 50000:
             break
-        total_area += area
+        # print(w, w/dst.shape[1], dst.shape)
+        if w < dst.shape[1] * 0.5 or cnt_coef > 2:
+            continue
+        # total_area += area
         counted += 1
         for b in box:
             x = b[0]
@@ -195,15 +215,16 @@ def process_image(name):
 
         # orig = orig[:, cx - w // 2: cx + w // 2]
         # secondary = secondary[:, cx - w // 2: cx + w // 2]
-        # output = cv2.drawContours(output, [box], 0, (0, 0, 255), 3)
+        # output = cv2.drawContours(output, [cnt], 0, (0, 0, 255), 3)
         # cv2.imshow('out', output)
         # cv2.waitKey()
         # cv2.imwrite('out.png', output)
         # print(2)
     # print(total_area)
+    # print(img.shape, dst.shape)
     if counted >= 1:
         w = int((maxX - minX) * 1.05)
-        h = int((maxY - minY) * 1.05)
+        h = int((maxY - minY) * 1.15)
         shape = dst.shape
         if w > shape[1] or w < shape[1] / 2:
             w = shape[1]
@@ -216,15 +237,22 @@ def process_image(name):
         else:
             cy = (maxY + minY) // 2
         # print(w, h, cx, cy)
-        dst = dst[cy - h // 2: cy + h // 2, cx - w // 2: cx + w // 2]
-        secondary = secondary[cy - h // 2: cy + h // 2, cx - w // 2: cx + w // 2]
+        newH1 = cy - h // 2
+        newH2 = cy + h // 2
+        newW1 = cx - w // 2
+        newW2 = cx + w // 2
+        if newH1 < 0: newH1 = 0
+        if newW1 < 0: newW1 = 0
+        dst = dst[newH1: newH2, newW1: newW2]
+        secondary = secondary[newH1: newH2, newW1: newW2]
+        # cv2.imwrite('rotated.png', dst)
     # cv2.imwrite('dilated.png', output)
 
-    # cv2.imwrite('rotated.png', dst)
-    dst, secondary = find_contour(dst, secondary)
+    # print(dst.shape)
+    dst, secondary = find_contour(dst, secondary, mode=3)
 
     y = find_lines(dst)
-    y += 5
+    y += 15
     _h = dst.shape[0]
     # print(y, dst.shape)
     if y > _h:
@@ -264,7 +292,7 @@ for n in names:
         processed, second = process_image(n)
         # print(processed.shape)
         if processed.shape[1] > 0 and processed.shape[0] > 0:
-            cv2.imwrite(f'{count}.png', processed)
+            # cv2.imwrite(f'{count}.png', processed)
             header = second[:75, :]
             help_header = processed[:50, :]
             # print('prLen', processed.shape[1])
@@ -291,8 +319,7 @@ for n in names:
             # elif width in range(625, 700):
             #    _id = 2
             if _id >= 0:
-                print(doc_names[_id])
-                print(vd.validate(processed, _id))
+                print(doc_names[_id], vd.validate(processed, _id))
             else:
                 pass
                 # print(n, 'no')
