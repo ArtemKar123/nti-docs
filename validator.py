@@ -14,12 +14,12 @@ from os.path import isfile, join
 class Validator:
     def __init__(self):
         self.zones14 = [[(24, 44), (1070, 74)], [(134, 95), (185, 125)], [(215, 91), (280, 125)],
-                        [(356, 98), (394, 125)],
-                        [(411, 93), (474, 124)], [(482, 91), (591, 120)], [(621, 90), (1072, 125)],
+                        [(356, 98), (394, 124)],
+                        [(411, 93), (474, 124)], [(482, 91), (591, 124)], [(621, 90), (1072, 125)],
                         [(329, 168), (1075, 190)],
-                        [(3, 280), (706, 313)], [(4, 422), (1082, 440)], [(377, 485), (438, 508)],
-                        [(465, 485), (588, 508)],
-                        [(661, 485), (682, 508)], [(699, 485), (767, 508)], [(790, 485), (1052, 508)],
+                        [(3, 280), (706, 313)], [(4, 422), (1082, 440)], [(377, 485), (438, 520)],
+                        [(465, 485), (588, 520)],
+                        [(661, 485), (682, 520)], [(699, 485), (767, 520)], [(790, 485), (1052, 520)],
                         [(234, 530), (875, 560)],
                         [(7, 1395), (380, 1424)], [(405, 1395), (537, 1424)], [(849, 1395), (883, 1424)],
                         [(905, 1395), (986, 1424)], [(1031, 1395), (1056, 1424)], ]
@@ -70,9 +70,25 @@ class Validator:
                 break
         #    print(topI, botI, leftJ, rightJ)
         half = int(accuracy / 2)
-        a = a[topI * accuracy - half:botI * accuracy - self.top_offset,
+        a = a[topI * accuracy - half:botI * accuracy - self.top_offset // 2,
             leftJ * accuracy - half:rightJ * accuracy - self.left_offset]
         return a
+
+    def no_lines(self, im):
+
+        gray = cv2.bitwise_not(im)
+        bw = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 15, -2)
+
+        horizontal = np.copy(bw)
+        cols = horizontal.shape[1]
+        horizontal_size = cols // 50
+        # Create structure element for extracting horizontal lines through morphology operations
+        horizontalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (horizontal_size, 1))
+        # Apply morphology operations
+        horizontal = cv2.erode(horizontal, horizontalStructure)
+        horizontal = cv2.dilate(horizontal, horizontalStructure)
+        final = 255 - (bw - horizontal)
+        return final
 
     def find_offset(self, im, accuracy=1):
         a = im
@@ -96,6 +112,7 @@ class Validator:
 
     def validate(self, image, code):
         image = cv2.resize(image, (1095, 1435), interpolation=cv2.INTER_LINEAR_EXACT)
+        image = self.no_lines(image)
         self.top_offset, self.left_offset = self.find_offset(image)
         self.top_offset -= 2
         self.left_offset -= 1
@@ -105,9 +122,9 @@ class Validator:
         zones = self.zones[code]
         is_valid = True
         spec_for18 = 0
+        valid_zones = []
         for zone in zones:
             # print(c)
-            c += 1
             zone = (
                 (zone[0][0] + self.left_offset, zone[0][1] + self.top_offset),
                 (zone[1][0] + self.left_offset, zone[1][1] + self.top_offset))
@@ -118,45 +135,53 @@ class Validator:
             if slc.shape[0] <= 0 or slc.shape[1] <= 0:
                 continue
             mean = np.mean(slc)
+            # print(mean)
             if mean > 250:
                 if code == 1:
-                    if c in range(17, 22):
-                        spec_for18 = 1
-                    elif c == 22:
-                        if spec_for18 == 1:
-                            spec_for18 = -1
-                        else:
-                            spec_for18 = 2
-                    if spec_for18 < 0:
-                        is_valid = False
+                    if c in range(17, 23):
+                        valid_zones.append(0)
+                    else:
+                        return False
                 else:
-                    is_valid = False
-            # print('mean', np.mean(slc), np.median(slc))
+                    return False
+                    pass
+            else:
+                valid_zones.append(1)
+            if c == 22 and code == 1:
+                mi = np.min(valid_zones[17:22])
+                # print(mi, valid_zones[22])
+                if mi == 1 or (mi == 0 and valid_zones[22] == 1):
+                    pass
+                else:
+                    return False
+                # print('mean', np.mean(slc), np.median(slc))
             # rect = ((zone[0][0], zone[0][1]), (zone[1][0], zone[1][1]), 0)
             # im = img[zone[0][1]:zone[1][1], zone[0][0]:zone[1][0]]
+            # print(c)
+            c += 1
             # output = cv2.rectangle(image, zone[0], zone[1], (0, 0, 255), 2)
-            # cv2.namedWindow('contour', cv2.WINDOW_NORMAL)
-            # cv2.namedWindow('slice')
-            # cv2.imshow('contour', output)
-            # cv2.imshow('slice', slc)
-            # cv2.waitKey()
-        # print(time.time() - start)
+        # cv2.namedWindow('contour', cv2.WINDOW_NORMAL)
+        # cv2.namedWindow('slice')
+        # cv2.imshow('contour', output)
+        # cv2.imshow('slice', slc)
+        # cv2.waitKey()
+        # # print(time.time() - start)
         return is_valid
 
-# img = cv2.imread('0.png')
+# img = cv2.imread('1.png')
 # img = cv2.resize(img, (1095, 1435), interpolation=cv2.INTER_LINEAR_EXACT)
-
-
+#
+#
 # vald = Validator()
 # print(vald.validate(img, 0))
-
-# print(im.shape)
-# PARAM = 75
-# for i in range(im.shape[0] // PARAM):
-#     cv2.imshow('image', im[i * PARAM:i * PARAM + PARAM, :])
-#     cv2.waitKey()
-
 #
+# # print(im.shape)
+# # PARAM = 75
+# # for i in range(im.shape[0] // PARAM):
+# #     cv2.imshow('image', im[i * PARAM:i * PARAM + PARAM, :])
+# #     cv2.waitKey()
+#
+# #
 # def draw_circle(event, x, y, flags, param):
 #     global mouseX, mouseY
 #     if event == cv2.EVENT_LBUTTONDBLCLK:
@@ -177,3 +202,4 @@ class Validator:
 #         break
 #     elif k == ord('a'):
 #         print(mouseX, mouseY)
+#

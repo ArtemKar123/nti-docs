@@ -260,7 +260,7 @@ def process_image(name):
     dst, secondary = find_contour(dst, secondary, mode=3)
 
     y = find_lines(dst)
-    y += 15
+    y += 5
     _h = dst.shape[0]
     # print(y, dst.shape)
     if y > _h:
@@ -301,7 +301,7 @@ for n in names:
         if type(processed) is int:
             continue
         if processed.shape[1] > 0 and processed.shape[0] > 0:
-            cv2.imwrite(f'{count}.png', processed)
+            # cv2.imwrite(f'{count}.png', processed)
             header = second[:75, :]
             help_header = processed[:50, :]
             # print('prLen', processed.shape[1])
