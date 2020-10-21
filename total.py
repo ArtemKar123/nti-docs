@@ -297,12 +297,12 @@ names = [os.path.join(dir_path, f) for f in listdir(dir_path) if isfile(join(dir
 # print(names)
 time_deb = args['timer']
 for n in names:
-    print(n, end=' ')
+    # print(n, end=' ')
     start = time.time()
     try:
         processed, second = process_image(n)
         if type(processed) is int:
-            print(False)
+            # print(False)
             continue
         if processed.shape[1] > 0 and processed.shape[0] > 0:
             # cv2.imwrite(f'{count}.png', processed)
@@ -314,15 +314,16 @@ for n in names:
             _id = hm.classify(header, help_header, processed.shape[1])
             if _id >= 0:
                 # print(doc_names[_id])
-                print(vd.validate(processed, _id))
+                if vd.validate(processed, _id):
+                    print('ok')
             else:
-                print(False)
+                # print(False)
                 pass
                 # print(n, 'no')
             times.append(time.time() - start)
     except Exception as e:
         # raise e
-        print(False)
+        # print(False)
         pass
         # print(n, 'no')
 if time_deb and len(times) > 0:
